@@ -1,3 +1,7 @@
+plugins {
+    id "com.jfrog.bintray" version "1.7.3"
+}
+
 group 'com.chimerapps.gradle.webtranslateit'
 version '1.0.0'
 
@@ -21,6 +25,15 @@ apply plugin: 'maven-publish'
 apply plugin: 'idea'
 
 sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+task packageJavadoc(type: Jar, dependsOn: 'javadoc') {
+    from javadoc.destinationDir
+}
 
 repositories {
     mavenCentral()
@@ -42,6 +55,49 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
+sourceSets {
+    main {
+        java {
+            srcDir "${buildDir.absolutePath}/generated/source/kapt/main"
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    pkg {
+        repo = 'maven'
+        name = 'webtranslateit-gradle-plugin'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/Chimerapps/moshi-generator'
+
+        version {
+            name = "$ARTIFACT_VERSION"
+            desc = "Moshi adapter generator - runtime"
+            released = new Date()
+        }
+    }
+    publications = ['MyPublication']
+}
+
+def pomConfig = {
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            name "Nicola Verbeeck"
+            email "nicola@chimerapps.com"
+            organization "Chimerapps"
+        }
+    }
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
@@ -50,14 +106,21 @@ publishing {
             version '1.0.0'
 
             from components.java
-        }
-    }
-}
 
-sourceSets {
-    main {
-        java {
-            srcDir "${buildDir.absolutePath}/generated/source/kapt/main"
+            artifact sourceJar {
+                classifier "sources"
+            }
+            artifact packageJavadoc {
+                classifier "javadoc"
+            }
+
+            pom.withXml {
+                def root = asNode()
+                root.appendNode('description', 'Annotation processor that generates moshi adapters. Runtime library')
+                root.appendNode('name', 'moshi-generator-runtime')
+                root.appendNode('url', 'https://github.com/Chimerapps/moshi-generator')
+                root.children().last() + pomConfig
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
@@ -32,20 +33,32 @@ open class DownloadTranslationsPlugin : Plugin<Project> {
         val extension = target.extensions.create("webtranslateit", DownloadTranslationsExtension::class.java)
 
         target.afterEvaluate {
-            target.extensions.getByType(DownloadTranslationsExtension::class.java).configurations.forEach { configuration ->
+            val tasks = arrayListOf<Task>()
+            extension.configurations.forEach { configuration ->
                 target.logger.debug("Creating task update${configuration.name.capitalize()}Translations")
                 val task = target.tasks.create("update${configuration.name.capitalize()}Translations", UpdateTranslationsTask::class.java) {
                     it.configuration = configuration
                 }
                 task.group = "Translations"
+                tasks.add(task)
             }
+
+            if (extension.apiKey != null) {
+                target.logger.debug("Creating task updateDefaultTranslations")
+                val task = target.tasks.create("updateDefaultTranslations", UpdateTranslationsTask::class.java) {
+                    it.configuration = extension
+                }
+                task.group = "Translations"
+                tasks.add(task)
+            }
+
+            target.logger.debug("Creating task updateTranslations")
+            val allTask = target.tasks.create("updateTranslations") {
+                it.dependsOn.addAll(tasks)
+            }
+            allTask.group = "Translations"
         }
 
-        target.logger.debug("Creating task updateTranslations")
-        val task = target.tasks.create("updateTranslations", UpdateTranslationsTask::class.java) {
-            it.configuration = extension
-        }
-        task.group = "Translations"
     }
 
 }

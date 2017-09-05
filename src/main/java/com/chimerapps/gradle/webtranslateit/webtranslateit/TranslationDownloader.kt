@@ -19,19 +19,18 @@ class TranslationDownloader(private val webTranslateItApi: WebTranslateItApi, pr
         logger.debug("Project download result: ${projectResponse.message()} ${projectResponse.body()}")
 
         val project = projectResponse.body()?.project ?: throw IllegalArgumentException("Failed to fetch project")
-        logger.debug("Got ${project.project_files?.size} project files, checking which we need to download")
-        project.project_files?.forEach {
-            logger.debug("Checking: ${it.id}")
-            val masterId = it.master_project_file_id ?: it.id
-            logger.debug("Downloading file: ${it.id} - ${it.locale_code}")
+        logger.debug("Got ${project.projectFiles?.size} project files, checking which we need to download")
+        project.projectFiles?.forEach {
+            val masterId = it.masterProjectFileId ?: it.id
+            logger.debug("Downloading file: ${it.id} - ${it.localeCode}")
 
-            val translationFile = webTranslateItApi.getTranslationFile(projectKey, masterId, it.locale_code).execute()
+            val translationFile = webTranslateItApi.getTranslationFile(projectKey, masterId, it.localeCode).execute()
             val body = translationFile.body()
             if (body == null) {
-                logger.warn("Failed to download file for locale ${it.locale_code}: ${translationFile.message()}")
+                logger.warn("Failed to download file for locale ${it.localeCode}: ${translationFile.message()}")
                 return@forEach
             }
-            val folderName = if (it.master_project_file_id == null) "values" else "values-${it.locale_code}"
+            val folderName = if (it.masterProjectFileId == null) "values" else "values-${it.localeCode}"
 
             val dir = File(outputRoot, folderName)
             dir.mkdirs()

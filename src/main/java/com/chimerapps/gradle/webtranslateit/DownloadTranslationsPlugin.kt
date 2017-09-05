@@ -1,6 +1,7 @@
 package com.chimerapps.gradle.webtranslateit
 
 import com.chimerapps.gradle.webtranslateit.webtranslateit.api.WebTranslateItApi
+import com.chimerapps.gradle.webtranslateit.webtranslateit.api.model.MoshiFactory
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import org.gradle.api.Plugin
@@ -17,6 +18,7 @@ open class DownloadTranslationsPlugin : Plugin<Project> {
     private val httpClient = OkHttpClient.Builder()
             .build()
     private val moshi = Moshi.Builder()
+            .add(MoshiFactory())
             .build()
 
     val webTranslateItApi = Retrofit.Builder()
@@ -27,8 +29,23 @@ open class DownloadTranslationsPlugin : Plugin<Project> {
             .create(WebTranslateItApi::class.java)
 
     override fun apply(target: Project) {
-        target.tasks.create("updateTranslations", UpdateTranslationsTask::class.java)
-        target.extensions.create("webtranslateit", DownloadTranslationsExtension::class.java)
+        val extension = target.extensions.create("webtranslateit", DownloadTranslationsExtension::class.java)
+
+        target.afterEvaluate {
+            target.extensions.getByType(DownloadTranslationsExtension::class.java).configurations.forEach { configuration ->
+                target.logger.debug("Creating task update${configuration.name.capitalize()}Translations")
+                val task = target.tasks.create("update${configuration.name.capitalize()}Translations", UpdateTranslationsTask::class.java) {
+                    it.configuration = configuration
+                }
+                task.group = "Translations"
+            }
+        }
+
+        target.logger.debug("Creating task updateTranslations")
+        val task = target.tasks.create("updateTranslations", UpdateTranslationsTask::class.java) {
+            it.configuration = extension
+        }
+        task.group = "Translations"
     }
 
 }
